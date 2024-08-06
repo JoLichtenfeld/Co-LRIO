@@ -1,6 +1,6 @@
 # CoLRIO
 
-Migration of the original repository from Ubuntu 20.04 to Ubuntu 22.04.
+Migration of the [original repository](https://github.com/PengYu-Team/Co-LRIO) from Ubuntu 20.04 to Ubuntu 22.04.
 
 A ROS2 package of CoLRIO: LiDAR-Ranging-Inertial Centralized State Estimation for Robotic Swarms. 
 
