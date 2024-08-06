@@ -15,8 +15,13 @@ private:
 
     /* ros2 */
     // subscriber
-    rclcpp::Subscription<rclcpp::SerializedMessage>::SharedPtr sub_optimization_request;
-    std::unordered_map<int, rclcpp::Subscription<rclcpp::SerializedMessage>::SharedPtr> sub_imu_odometry;
+    /* *********************************** */
+    /* Foxy to Humble Migration */
+    // rclcpp::Subscription<rclcpp::SerializedMessage>::SharedPtr sub_optimization_request;
+    // std::unordered_map<int, rclcpp::Subscription<rclcpp::SerializedMessage>::SharedPtr> sub_imu_odometry;
+    rclcpp::Subscription<co_lrio::msg::OptimizationRequest>::SharedPtr sub_optimization_request;
+    std::unordered_map<int, rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr> sub_imu_odometry;
+    /* *********************************** */
 
     // publisher
     rclcpp::Publisher<co_lrio::msg::LoopClosure>::SharedPtr pub_loop_closure;
@@ -1014,7 +1019,8 @@ int main(
     rclcpp::NodeOptions options;
     options.enable_topic_statistics(false);
     options.use_intra_process_comms(false);
-    rclcpp::executors::MultiThreadedExecutor exec(rclcpp::executor::ExecutorArgs(), 2, true);
+    rclcpp::executors::MultiThreadedExecutor exec(rclcpp::ExecutorOptions(), 2, true);
+    // rclcpp::executors::MultiThreadedExecutor exec(rclcpp::executor::ExecutorArgs(), 2, true);
 
     auto CM = std::make_shared<co_lrio::ConcentratedMapping>(options);
     exec.add_node(CM);

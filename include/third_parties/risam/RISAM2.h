@@ -18,7 +18,7 @@
  */
 #pragma once
 #include <gtsam/nonlinear/ISAM2.h>
-
+#include <optional>
 #include <deque>
 
 #include "risam/DoglegLineSearch.h"
@@ -44,7 +44,7 @@ class RISAM2 : public ISAM2 {
     /// @brief The base ISAM2 params
     ISAM2Params isam2_params;
     /// @brief Optional params for custom line-search optimization method
-    boost::optional<DoglegLineSearchParams> optimization_params{boost::none};
+    std::optional<DoglegLineSearchParams> optimization_params{};
     // Constrain Variables involved because of convexity to be farther from the root than update variables
     bool use_custom_ordering_constraint{true};
     // Iterate until all mu's have converged before adding new GNC factors
@@ -148,9 +148,9 @@ class RISAM2 : public ISAM2 {
    */
   ISAM2Result update(const NonlinearFactorGraph& newFactors = NonlinearFactorGraph(), const Values& newTheta = Values(),
                      bool known_inliers = false, const FactorIndices& removeFactorIndices = FactorIndices(),
-                     const boost::optional<FastMap<Key, int> >& constrainedKeys = boost::none,
-                     const boost::optional<FastList<Key> >& noRelinKeys = boost::none,
-                     const boost::optional<FastList<Key> >& extraReelimKeys = boost::none,
+                     const std::optional<FastMap<Key, int> >& constrainedKeys = {},
+                     const std::optional<FastList<Key> >& noRelinKeys = {},
+                     const std::optional<FastList<Key> >& extraReelimKeys = {},
                      bool force_relinearize = false);
 
   /** @brief Update Interface. See ISAM2 docs for details
@@ -213,7 +213,7 @@ class RISAM2 : public ISAM2 {
    */
   void updateDelta(bool forceFullSolve = false) const;
 
-  double robustError(boost::optional<VectorValues> delta = boost::none) const;
+  double robustError(std::optional<VectorValues> delta = {}) const;
   double robustError(Values vals) const;
   void iterateToConvergence();
   void updateMuInitOnConvergence();

@@ -14,7 +14,7 @@ namespace risam {
 class GraduatedFactor {
   /** TYPES **/
  public:
-  typedef boost::shared_ptr<GraduatedFactor> shared_ptr;
+  typedef std::shared_ptr<GraduatedFactor> shared_ptr;
 
   /** FIELDS **/
  protected:
@@ -56,7 +56,7 @@ class GenericGraduatedFactor : public FACTOR_TYPE, public GraduatedFactor {
 
   /** TYPES **/
  public:
-  typedef boost::shared_ptr<GenericGraduatedFactor<FACTOR_TYPE>> shared_ptr;
+  typedef std::shared_ptr<GenericGraduatedFactor<FACTOR_TYPE>> shared_ptr;
 
   /**INTERFACE**/
  public:
@@ -73,7 +73,7 @@ class GenericGraduatedFactor : public FACTOR_TYPE, public GraduatedFactor {
 
   /// @brief makes a deep copy
   gtsam::NonlinearFactor::shared_ptr clone() const override {
-    return boost::static_pointer_cast<gtsam::NonlinearFactor>(
+    return std::static_pointer_cast<gtsam::NonlinearFactor>(
         gtsam::NonlinearFactor::shared_ptr(new GenericGraduatedFactor<FACTOR_TYPE>(*this)));
   }
 
@@ -110,7 +110,7 @@ class GenericGraduatedFactor : public FACTOR_TYPE, public GraduatedFactor {
     for (int i = 0; i < Ablocks.size(); i++) {
       Ablock_map[keys[i]] = Ablocks[i];
     }
-    return boost::make_shared<gtsam::JacobianFactor>(Ablock_map, b);
+    return std::make_shared<gtsam::JacobianFactor>(Ablock_map, b);
   }
   /* ************************************************************************* */
   double residual(const gtsam::Values& current_estimate) const override {
@@ -130,6 +130,6 @@ GenericGraduatedFactor<FACTOR_TYPE> make_graduated(Args&&... args) {
 
 template <class FACTOR_TYPE, class... Args>
 typename GenericGraduatedFactor<FACTOR_TYPE>::shared_ptr make_shared_graduated(Args&&... args) {
-  return boost::make_shared<GenericGraduatedFactor<FACTOR_TYPE>>(std::forward<Args>(args)...);
+  return std::make_shared<GenericGraduatedFactor<FACTOR_TYPE>>(std::forward<Args>(args)...);
 }
 }  // namespace risam

@@ -977,31 +977,46 @@ public:
                     break;
                 }
             }
+            // std::cout << "Initialization 2 " << integrator_time << std::endl;
+            // std::cout << "Initialization 2 " << pose_time << std::endl;
+            // std::cout << "Initialization 2 " << frame_index << std::endl;
 
             // initial pose
             imu_state = std::make_unique<gtsam::NavState>(lidar_pose.compose(trans_lidar_to_imu), gtsam::Vector3(0, 0, 0));
             factor_graph->emplace_shared<gtsam::PriorFactor<gtsam::Pose3>>(gtsam::Symbol('x',frame_index), imu_state->pose(), prior_pose_noise);
             initial_value->insert(gtsam::Symbol('x',frame_index), imu_state->pose());
             index_timestamps->emplace(make_pair(gtsam::Symbol('x',frame_index), pose_time));
+            // std::cout << "Initialization 3" << std::endl;
             // initial velocity
             factor_graph->emplace_shared<gtsam::PriorFactor<gtsam::Vector3>>(gtsam::Symbol('v',frame_index), imu_state->v(), prior_velocity_noise);
             initial_value->insert(gtsam::Symbol('v',frame_index), imu_state->v());
             index_timestamps->emplace(make_pair(gtsam::Symbol('v',frame_index), pose_time));
+            // std::cout << "Initialization 4" << std::endl;
             // initial bias
             imu_bias = gtsam::imuBias::ConstantBias();
             factor_graph->emplace_shared<gtsam::PriorFactor<gtsam::imuBias::ConstantBias>>(gtsam::Symbol('b',frame_index), imu_bias, prior_bias_noise);
             initial_value->insert(gtsam::Symbol('b',frame_index), imu_bias);
             index_timestamps->emplace(make_pair(gtsam::Symbol('b',frame_index), pose_time));
+            // std::cout << "Initialization 5" << std::endl;
 
+            // std::cout << "Initialization 5" << imu_state->pose() << std::endl;
+            // std::cout << "Initialization 5" << imu_state->v() << std::endl;
             // optimize
             smoother->update(*factor_graph, *initial_value, *index_timestamps);
+            // std::cout << "Initialization 6" << std::endl;
             factor_graph->resize(0);
             initial_value->clear();
             index_timestamps->clear();
+            // std::cout << "Initialization 7" << std::endl;
 
             // initilize preintegrator
             imu_preintegrator->resetIntegrationAndSetBias(imu_bias);
+            // std::cout << "Initialization 8" << std::endl;
             imu_integrator->resetIntegrationAndSetBias(imu_bias);
+            // std::cout << "Initialization 9" << std::endl;
+
+            // smoother->print("\nFactor Graph:\n");  // print
+            // std::cout << "Factor Graph: Finished" << std::endl;
             
             key_index = frame_index;
             last_key_index = key_index;

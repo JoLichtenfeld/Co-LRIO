@@ -353,7 +353,7 @@ def generate_launch_description():
 	# ld.add_action(gt_node)
 
 	# centrailized rviz
-	rviz_config_path = os.path.join(get_package_share_directory('co_lrio'), 'config', 'rviz2.rviz')
+	rviz_config_path = os.path.join(get_package_share_directory('co_lrio'), 'config', 'rviz2_ten_drone.rviz')
 	rviz_node = Node(
 		package = 'rviz2',
 		namespace = '',

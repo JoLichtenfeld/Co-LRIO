@@ -8,7 +8,7 @@
 #pragma once
 #include <gtsam/base/FastVector.h>
 #include <gtsam/base/Matrix.h>
-
+#include <memory>
 #include <iostream>
 
 using namespace gtsam;
@@ -16,7 +16,7 @@ namespace risam {
 class GraduatedKernel {
   /** TYPES **/
  public:
-  typedef boost::shared_ptr<GraduatedKernel> shared_ptr;
+  typedef std::shared_ptr<GraduatedKernel> shared_ptr;
 
   /** FIELDS **/
  protected:

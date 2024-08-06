@@ -29,9 +29,9 @@ namespace risam {
 /* ************************************************************************* */
 ISAM2Result RISAM2::update(const NonlinearFactorGraph& newFactors, const Values& newTheta, bool known_inliers,
                            const FactorIndices& removeFactorIndices,
-                           const boost::optional<FastMap<Key, int> >& constrainedKeys,
-                           const boost::optional<FastList<Key> >& noRelinKeys,
-                           const boost::optional<FastList<Key> >& extraReelimKeys, bool force_relinearize) {
+                           const std::optional<FastMap<Key, int> >& constrainedKeys,
+                           const std::optional<FastList<Key> >& noRelinKeys,
+                           const std::optional<FastList<Key> >& extraReelimKeys, bool force_relinearize) {
   ISAM2UpdateParams params;
   params.constrainedKeys = constrainedKeys;
   params.extraReelimKeys = extraReelimKeys;
@@ -43,7 +43,7 @@ ISAM2Result RISAM2::update(const NonlinearFactorGraph& newFactors, const Values&
 
   new_factors_include_gnc_ = false;
   for (auto& factor : newFactors) {
-    if (boost::dynamic_pointer_cast<GraduatedFactor>(factor)) {
+    if (std::dynamic_pointer_cast<GraduatedFactor>(factor)) {
       new_factors_include_gnc_ = true;
     }
   }
@@ -98,7 +98,8 @@ ISAM2Result RISAM2::update(const NonlinearFactorGraph& newFactors, const Values&
       update.findFluid(roots_, relinKeys, &result.markedKeys, result.details());
       // 6. Update linearization point for marked variables:
       // \Theta_{J}:=\Theta_{J}+\Delta_{J}.
-      UpdateImpl::ExpmapMasked(delta_, relinKeys, &theta_);
+      // UpdateImpl::ExpmapMasked(delta_, relinKeys, &theta_);
+      theta_.retractMasked(delta_, relinKeys);
     }
     result.variablesRelinearized = result.markedKeys.size();
   }
@@ -211,7 +212,13 @@ void RISAM2::recalculate(const ISAM2UpdateParams& updateParams, const KeySet& re
 /* ************************************************************************* */
 void RISAM2::recalculateBatch(const ISAM2UpdateParams& updateParams, const KeySet& updateInvolvedKeys,
                               KeySet* affectedKeysSet, ISAM2Result* result) {
-  br::copy(variableIndex_ | br::map_keys, std::inserter(*affectedKeysSet, affectedKeysSet->end()));
+  /* Deprecated */
+  // br::copy(variableIndex_ | br::map_keys, std::inserter(*affectedKeysSet, affectedKeysSet->end()));
+  /* Updated */
+  // copy the keys from the variableIndex_ to the affectedKeysSet
+  for (const auto& [key, _] : variableIndex_) {
+    affectedKeysSet->insert(key);
+  }
 
   // Removed unused keys:
   VariableIndex affectedFactorsVarIndex = variableIndex_;
@@ -325,7 +332,7 @@ void RISAM2::recalculateIncremental(const ISAM2UpdateParams& updateParams, const
   factors.push_back(cachedBoundary);
 
   // Add the orphaned subtrees
-  for (const auto& orphan : *orphans) factors += boost::make_shared<BayesTreeOrphanWrapper<RISAM2::Clique> >(orphan);
+  for (const auto& orphan : *orphans) factors += std::make_shared<BayesTreeOrphanWrapper<RISAM2::Clique> >(orphan);
 
   // 3. Re-order and eliminate the factor graph into a Bayes net (Algorithm
   // [alg:eliminate]), and re-assemble into a new Bayes tree (Algorithm
@@ -386,7 +393,7 @@ void RISAM2::recalculateIncremental(const ISAM2UpdateParams& updateParams, const
 GaussianFactor::shared_ptr RISAM2::relinearizeFactor(const size_t factor_idx, const KeySet& updateInvolvedKeys,
                                                      const KeySet& relinKeys) {
   auto factor = nonlinearFactors_[factor_idx];
-  auto robustFactor = boost::dynamic_pointer_cast<GraduatedFactor>(factor);
+  auto robustFactor = std::dynamic_pointer_cast<GraduatedFactor>(factor);
   if (!factor) return GaussianFactor::shared_ptr();
 
   /** Set Inclusion **/
@@ -490,7 +497,7 @@ void RISAM2::pushBackFactors(const NonlinearFactorGraph& newFactors, bool known_
 
   for (auto idx : *newFactorsIndices) {
     double mu_init = 0.0;
-    auto robustFactor = boost::dynamic_pointer_cast<risam::GraduatedFactor>(nonlinearFactors_[idx]);
+    auto robustFactor = std::dynamic_pointer_cast<risam::GraduatedFactor>(nonlinearFactors_[idx]);
     if (robustFactor) {
       mu_init = robustFactor->kernel()->muInit();
     }
@@ -522,7 +529,7 @@ void RISAM2::pushBackFactors(const NonlinearFactorGraph& newFactors, bool known_
 }
 
 /* ************************************************************************* */
-double RISAM2::robustError(boost::optional<VectorValues> delta) const {
+double RISAM2::robustError(std::optional<VectorValues> delta) const {
   Values theta = theta_;
   if (delta) {
     theta = theta.retract(*delta);
@@ -535,7 +542,7 @@ double RISAM2::robustError(Values vals) const {  // TODO (dan) Optimize
   double error = 0;
   for (size_t i = 0; i < nonlinearFactors_.size(); i++) {
     auto factor = nonlinearFactors_[i];
-    auto robustFactor = boost::dynamic_pointer_cast<risam::GraduatedFactor>(nonlinearFactors_[i]);
+    auto robustFactor = std::dynamic_pointer_cast<risam::GraduatedFactor>(nonlinearFactors_[i]);
     if (robustFactor) {
       error += robustFactor->robustResidual(vals, mu_[i]);
     } else if (factor) {
@@ -597,17 +604,17 @@ void RISAM2::traverseClique(KeySet& traversedKeys, ISAM2::sharedClique clique) {
 void RISAM2::updateDelta(bool forceFullSolve) const {
   if (!risam_params_
            .optimization_params) {  // if RISAM does not provide optimizer params, use the ISAM2 configured ones
-    if (params_.optimizationParams.type() == typeid(ISAM2GaussNewtonParams)) {
+    if (std::holds_alternative<ISAM2GaussNewtonParams>(params_.optimizationParams)) {
       // If using Gauss-Newton, update with wildfireThreshold
-      const ISAM2GaussNewtonParams& gaussNewtonParams = boost::get<ISAM2GaussNewtonParams>(params_.optimizationParams);
+      const ISAM2GaussNewtonParams& gaussNewtonParams = std::get<ISAM2GaussNewtonParams>(params_.optimizationParams);
       const double effectiveWildfireThreshold = forceFullSolve ? 0.0 : gaussNewtonParams.wildfireThreshold;
 
       DeltaImpl::UpdateGaussNewtonDelta(roots_, deltaReplacedMask_, effectiveWildfireThreshold, &delta_);
       deltaReplacedMask_.clear();
 
-    } else if (params_.optimizationParams.type() == typeid(ISAM2DoglegParams)) {
+    } else if (std::holds_alternative<ISAM2DoglegParams>(params_.optimizationParams)) {
       // If using Dogleg, do a Dogleg step
-      const ISAM2DoglegParams& doglegParams = boost::get<ISAM2DoglegParams>(params_.optimizationParams);
+      const ISAM2DoglegParams& doglegParams = std::get<ISAM2DoglegParams>(params_.optimizationParams);
       const double effectiveWildfireThreshold = forceFullSolve ? 0.0 : doglegParams.wildfireThreshold;
 
       // Do one Dogleg iteration
@@ -633,7 +640,7 @@ void RISAM2::updateDelta(bool forceFullSolve) const {
           double error = 0;
           for (size_t i = 0; i < graph_.size(); i++) {
             auto factor = graph_[i];
-            auto robustFactor = boost::dynamic_pointer_cast<risam::GraduatedFactor>(graph_[i]);
+            auto robustFactor = std::dynamic_pointer_cast<risam::GraduatedFactor>(graph_[i]);
             if (robustFactor) {
               error += robustFactor->robustResidual(theta, mu_[i]);
             } else if (factor) {
@@ -707,7 +714,7 @@ void RISAM2::iterateToConvergence() {
 /* ************************************************************************* */
 void RISAM2::updateMuInitOnConvergence() {
   for (auto factor_idx : factors_to_check_status_) {
-    auto robustFactor = boost::dynamic_pointer_cast<GraduatedFactor>(nonlinearFactors_[factor_idx]);
+    auto robustFactor = std::dynamic_pointer_cast<GraduatedFactor>(nonlinearFactors_[factor_idx]);
     auto residual = robustFactor->residual(theta_);
     auto mahdist = residual;  // Mahalanobis Distance
     auto dist = boost::math::chi_squared_distribution<double>(nonlinearFactors_[factor_idx]->dim());

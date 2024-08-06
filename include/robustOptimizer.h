@@ -50,7 +50,7 @@ private:
     shared_ptr<gtsam::ExpressionFactorGraph> graph_backup;
 
     risam::RISAM2::RISAM2Params riparams;
-    boost::shared_ptr<risam::RISAM2> risam_global;
+    std::shared_ptr<risam::RISAM2> risam_global;
 
     int prior_owner;
     std::unordered_map<int, gtsam::Pose3> prior_pose;
@@ -142,7 +142,7 @@ public:
         riparams.increment_outlier_mu = true;
         riparams.optimization_params = opt_params;
 
-        risam_global = boost::make_shared<risam::RISAM2>(riparams);
+        risam_global = std::make_shared<risam::RISAM2>(riparams);
         
         prior_owner = -1;
         prior_pose.clear();
@@ -470,7 +470,7 @@ private:
         if (enable_risam_)
         {
             auto graduated_factor = risam::make_shared_graduated<gtsam::RangeFactor<gtsam::Pose3>>(
-                boost::make_shared<risam::SIGKernel>(6), imu_odom_symbol, pairwise_distance.symbol_current, pairwise_distance.distance,
+                std::make_shared<risam::SIGKernel>(6), imu_odom_symbol, pairwise_distance.symbol_current, pairwise_distance.distance,
                 gtsam::noiseModel::Gaussian::Covariance(ranging_noise->covariance()));
             graduated_graph->push_back(graduated_factor);
         }
@@ -860,7 +860,7 @@ private:
                 if (enable_risam_)
                 {
                     auto graduated_factor = risam::make_shared_graduated<gtsam::BetweenFactor<gtsam::Pose3>>(
-                        boost::make_shared<risam::SIGKernel>(6), sf.index_from, sf.index_to, pose_between,
+                        std::make_shared<risam::SIGKernel>(6), sf.index_from, sf.index_to, pose_between,
                         gtsam::noiseModel::Gaussian::Covariance(noise_model->covariance()));
                     graduated_graph->push_back(graduated_factor);
                 }
@@ -917,7 +917,7 @@ private:
                     if (enable_risam_)
                     {
                         auto graduated_factor = risam::make_shared_graduated<gtsam::BetweenFactor<gtsam::Pose3>>(
-                            boost::make_shared<risam::SIGKernel>(6), loop.symbol0, loop.symbol1, loop.measurement.pose,
+                            std::make_shared<risam::SIGKernel>(6), loop.symbol0, loop.symbol1, loop.measurement.pose,
                             gtsam::noiseModel::Gaussian::Covariance(this_noise_model->covariance()));
                         inlier_graph->push_back(graduated_factor);
                     }
@@ -1168,7 +1168,7 @@ private:
                     risam_global->update();
                     auto output_graph = risam_global->getFactorsUnsafe();
                     auto output_values = risam_global->calculateEstimate();
-                    risam_global = boost::make_shared<risam::RISAM2>(riparams);
+                    risam_global = std::make_shared<risam::RISAM2>(riparams);
                     risam_global->update(output_graph, output_values, true);
 
                     graph_gnc.resize(0);
@@ -1193,7 +1193,7 @@ private:
                 }
                 else
                 {
-                    auto risam_tmp = boost::make_shared<risam::RISAM2>(riparams);
+                    auto risam_tmp = std::make_shared<risam::RISAM2>(riparams);
 
                     risam_tmp->update(graph_gnc, values_gnc, true);
 

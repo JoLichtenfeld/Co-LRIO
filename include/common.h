@@ -63,11 +63,11 @@
 // GeographicLib
 #include <geo_graphic/LocalCartesian.hpp>
 // gicp
-#include <gicp/fast_gicp.hpp>
-#include <gicp/fast_vgicp.hpp>
-#include <pcl/filters/approximate_voxel_grid.h>
+// #include <gicp/fast_gicp.hpp>
+// #include <gicp/fast_vgicp.hpp>
+// #include <pcl/filters/approximate_voxel_grid.h>
 // ikd tree
-#include <ikd_tree/ikd_Tree.h>
+// #include <ikd_tree/ikd_Tree.h>
 // file iostream
 #include <fstream>
 #include <iostream>
