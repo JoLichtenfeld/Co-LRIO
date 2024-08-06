@@ -1,15 +1,18 @@
 # CoLRIO
 
+Migration of the original repository from Ubuntu 20.04 to Ubuntu 22.04.
+
 A ROS2 package of CoLRIO: LiDAR-Ranging-Inertial Centralized State Estimation for Robotic Swarms. 
 
 https://github.com/PengYu-Team/Co-LRIO/assets/41199568/81985d82-983c-4eca-898b-43e8f84e7b45
 
 ## Prerequisites
-  - [Ubuntu ROS2 Foxy](http://wiki.ros.org/ROS/Installation) (Robot Operating System 2 on Ubuntu 20.04)
+  - [Ubuntu ROS2 Humble](http://wiki.ros.org/ROS/Installation) (Robot Operating System 2 on Ubuntu 22.04)
   - CMake (Compilation Configuration Tool)
-  - [PCL](https://pointclouds.org/downloads/linux.html) (Default Point Cloud Library on Ubuntu work normally)
-  - [Eigen](http://eigen.tuxfamily.org/index.php?title=Main_Page) (Default Eigen library on Ubuntu work normally)
-  - [GTSAM 4.2a8](https://github.com/borglab/gtsam/releases) (Georgia Tech Smoothing and Mapping library)
+  - [PCL 1.12.0](https://pointclouds.org/downloads/linux.html) (Default Point Cloud Library on Ubuntu work normally)
+  - [Eigen 3.4.0](http://eigen.tuxfamily.org/index.php?title=Main_Page) (Default Eigen library on Ubuntu work normally)
+  - [GTSAM Pre4.3(develop)](https://github.com/borglab/gtsam/tree/c6bd3f8e321c1570583c93f29f0791c53e4cf5a0) (Georgia Tech Smoothing and Mapping library)
+  - [small_gicp 0.1.2](https://github.com/koide3/small_gicp/tree/76b2f004fa0b4b6a08bdf471338d25a8c511028b) (Point Cloud Registration Library developed by Kenji Koide)
 
 ## Compilation
   Build CoLRIO:
