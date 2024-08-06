@@ -1,10 +1,6 @@
 #include "common.h"
 #include "imuPreintegration.h"
 #include "systemMonitor.h"
-#include <small_gicp/pcl/pcl_point.hpp>
-#include <small_gicp/pcl/pcl_point_traits.hpp>
-#include <small_gicp/pcl/pcl_registration.hpp>
-#include <small_gicp/util/downsampling_omp.hpp>
 
 namespace co_lrio
 {
@@ -77,21 +73,16 @@ private:
     pcl::PointCloud<PointPose3D>::Ptr sim_scan;
 
     // local map
-    // std::shared_ptr<KD_TREE<PointPose3D>> ikd_tree;
+    std::shared_ptr<KD_TREE<PointPose3D>> ikd_tree;
     pcl::PointCloud<PointPose3D>::Ptr near_global_frames;
     pcl::KdTreeFLANN<PointPose3D>::Ptr kdtreeSurroundingKeyPoses;
     pcl::VoxelGrid<PointPose3D> downSizeFilterSurroundingKeyPoses; // for surrounding key poses of scan-to-map optimization
 
     // gicp
-    // fast_gicp::FastGICP<PointPose3D, PointPose3D> gicp;
-    // small_gicp::RegistrationPCL<PointPose3D, PointPose3D> gicp;
-    small_gicp::Registration<small_gicp::GICPFactor, small_gicp::ParallelReductionOMP> gicp;
+    fast_gicp::FastGICP<PointPose3D, PointPose3D> gicp;
     pcl::VoxelGrid<PointPose3D> voxel_grid;
     pcl::PointCloud<PointPose3D>::Ptr source_cloud;
     pcl::PointCloud<PointPose3D>::Ptr target_cloud;
-    pcl::PointCloud<pcl::PointCovariance>::Ptr source_cov;
-    pcl::PointCloud<pcl::PointCovariance>::Ptr target_cov;
-    std::shared_ptr<small_gicp::KdTree<pcl::PointCloud<pcl::PointCovariance>>> kd_tree;
 
     // odometry
     bool first_scan;
@@ -110,10 +101,8 @@ private:
     pcl::VoxelGrid<PointPose3D> loop_closure_voxelgrid;
     pcl::PointCloud<PointPose3D>::Ptr map_cloud;
     pcl::PointCloud<PointPose3D>::Ptr scan_cloud;
-    // pcl::PointCloud<PointPose3D>::Ptr unused_result;
-    // fast_gicp::FastGICP<PointPose3D, PointPose3D> gicp_loop;
-    // small_gicp::RegistrationPCL<PointPose3D, PointPose3D> gicp_loop;
-    small_gicp::Registration<small_gicp::GICPFactor, small_gicp::ParallelReductionOMP> gicp_loop;
+    pcl::PointCloud<PointPose3D>::Ptr unused_result;
+    fast_gicp::FastGICP<PointPose3D, PointPose3D> gicp_loop;
 
     // other
     nav_msgs::msg::Path global_path;
@@ -423,30 +412,23 @@ public:
         sim_scan.reset(new pcl::PointCloud<PointPose3D>());
 
         // local map
-        // ikd_tree = std::make_shared<KD_TREE<PointPose3D>>(0.3, 0.6, params.leaf_size_);
+        ikd_tree = std::make_shared<KD_TREE<PointPose3D>>(0.3, 0.6, params.leaf_size_);
         near_global_frames.reset(new pcl::PointCloud<PointPose3D>());
         kdtreeSurroundingKeyPoses.reset(new pcl::KdTreeFLANN<PointPose3D>());
         downSizeFilterSurroundingKeyPoses.setLeafSize(params.keyframes_density_, params.keyframes_density_, params.keyframes_density_); // for surrounding key poses of scan-to-map optimization
 
         // gicp
-        // gicp.setTransformationEpsilon(params.epsilon_); //0.001
+        gicp.setTransformationEpsilon(params.epsilon_); //0.001
         // gicp.setRotationEpsilon(params.epsilon_);
-        // gicp.setMaxCorrespondenceDistance(params.max_correspondence_distance_);
-        // gicp.setRANSACOutlierRejectionThreshold(params.ransac_outlier_reject_threshold_);
-        // gicp.setRANSACIterations(params.ransac_iterations_time_);
-        // gicp.setMaximumIterations(params.max_iteration_time_);
-        // gicp.setNumThreads(params.number_of_cores_);
-        // gicp.setEuclideanFitnessEpsilon(params.epsilon_);
-        gicp.criteria.translation_eps = params.epsilon_;
-        gicp.criteria.rotation_eps = params.epsilon_;
-        gicp.reduction.num_threads = params.number_of_cores_;
-        gicp.rejector.max_dist_sq = params.max_correspondence_distance_ * params.max_correspondence_distance_;
-        gicp.optimizer.max_iterations = params.max_iteration_time_;
+        gicp.setMaxCorrespondenceDistance(params.max_correspondence_distance_);
+        gicp.setRANSACOutlierRejectionThreshold(params.ransac_outlier_reject_threshold_);
+        gicp.setRANSACIterations(params.ransac_iterations_time_);
+        gicp.setMaximumIterations(params.max_iteration_time_);
+        gicp.setNumThreads(params.number_of_cores_);
+        gicp.setEuclideanFitnessEpsilon(params.epsilon_);
         voxel_grid.setLeafSize(params.leaf_size_, params.leaf_size_, params.leaf_size_);
         source_cloud.reset(new pcl::PointCloud<PointPose3D>());
         target_cloud.reset(new pcl::PointCloud<PointPose3D>());
-        source_cov.reset(new pcl::PointCloud<pcl::PointCovariance>());
-        target_cov.reset(new pcl::PointCloud<pcl::PointCovariance>());
 
         // odometry
         first_scan = true;
@@ -471,14 +453,11 @@ public:
         loop_closure_voxelgrid.setLeafSize(params.leaf_size_, params.leaf_size_, params.leaf_size_);
         map_cloud.reset(new pcl::PointCloud<PointPose3D>());
         scan_cloud.reset(new pcl::PointCloud<PointPose3D>());
-        // unused_result.reset(new pcl::PointCloud<PointPose3D>());
-        // gicp_loop.setNumThreads(params.number_of_cores_);
-        // gicp_loop.setEuclideanFitnessEpsilon(0.01);
-        // gicp_loop.setTransformationEpsilon(0.01);
-        // gicp_loop.setRANSACIterations(0);
-        gicp_loop.reduction.num_threads = params.number_of_cores_;
-        gicp_loop.criteria.translation_eps = 0.01;
-        gicp_loop.criteria.rotation_eps = 0.01;
+        unused_result.reset(new pcl::PointCloud<PointPose3D>);
+        gicp_loop.setNumThreads(params.number_of_cores_);
+        gicp_loop.setEuclideanFitnessEpsilon(0.01);
+        gicp_loop.setTransformationEpsilon(0.01);
+        gicp_loop.setRANSACIterations(0);
 
         system_monitor = std::unique_ptr<systemMonitor>(new systemMonitor(this, 10));
     }
@@ -532,8 +511,8 @@ public:
 
     void sendOptimizationRequest()
     {   
+
         auto request_info_msg = std::make_unique<co_lrio::msg::OptimizationRequest>();
-        
         request_info_msg->header.stamp = rclcpp::Time(scan_end_time*1e9);
         request_info_msg->header.frame_id = params.name_ + params.odometry_frame_;
         auto scan_cloud_msg = std::make_unique<sensor_msgs::msg::PointCloud2>();
@@ -585,7 +564,6 @@ public:
                 }
             }
         }
-
         static rclcpp::SerializedMessage serialized_msg;
         static rclcpp::Serialization<co_lrio::msg::OptimizationRequest> serializer;
         serializer.serialize_message(request_info_msg.get(), &serialized_msg);
@@ -597,8 +575,6 @@ public:
         const sensor_msgs::msg::PointCloud2::SharedPtr msg)
     {
         std::lock_guard<std::mutex> lock(lock_on_scan);
-
-        // std::cout << "cloudHandler" << std::endl;
 
         /*** handle msg ***/
         // cache point cloud
@@ -635,7 +611,6 @@ public:
             // downsample scan
             voxel_grid.setInputCloud(sim_scan);
             voxel_grid.filter(*source_cloud);
-            // source_cov = small_gicp::voxelgrid_sampling_omp<pcl::PointCloud<PointPose3D>, pcl::PointCloud<pcl::PointCovariance>>(*sim_scan, params.leaf_size_);
         }
         else if (params.sensor_ == LiDARType::VELODYNE || params.sensor_ == LiDARType::LIVOX)
         {
@@ -646,8 +621,6 @@ public:
             scan_time = rosTime(scan_header.stamp);
             scan_start_time = rosTime(scan_header.stamp) + scan->points.front().time;
             scan_end_time = rosTime(scan_header.stamp) + scan->points.back().time;
-
-            // std::cout << "Raw Scan: " << scan->points.size() << std::endl;
 
             // remove nan
             static vector<int> indices;
@@ -660,13 +633,13 @@ public:
                 return;
             }
             const auto result = imu_preintegration->undistortPointcloud(scan_time, scan_start_time, scan_end_time, scan, current_pose);
+
             if (skip_frame == 0)
                 last_pose = current_pose;
             current_pose = result.second;
             // downsample scan
             voxel_grid.setInputCloud(result.first);
             voxel_grid.filter(*source_cloud);
-            // source_cov = small_gicp::voxelgrid_sampling_omp<pcl::PointCloud<pcl::PointXYZIRT>, pcl::PointCloud<pcl::PointCovariance>>(*result.first, params.leaf_size_);
         }
         else
         {
@@ -674,21 +647,6 @@ public:
             rclcpp::shutdown();
         }
         auto end_undistort_time = chrono::high_resolution_clock::now();
-
-        // pcl::copyPointCloud(*source_cloud, *source_cov);
-        // pcl::copyPointCloud(*source_cov, *source_cloud);
-        // copy the points of source cloud to source cov
-        const int cloudSize = source_cloud->size();
-        source_cov->points.resize(cloudSize);
-        for (size_t i = 0; i < cloudSize; i++)
-        {
-            source_cov->points[i].x = source_cloud->points[i].x;
-            source_cov->points[i].y = source_cloud->points[i].y;
-            source_cov->points[i].z = source_cloud->points[i].z;
-        }
-        small_gicp::estimate_covariances_omp(*source_cov, 4, params.number_of_cores_);
-        // std::cout << "Before Matching: " << source_cloud->points.size() << std::endl;
-        // std::cout << "Before Matching: " << source_cov->points.size() << std::endl;
 
         /*** scan matching ***/
         if (first_scan)
@@ -740,20 +698,33 @@ public:
             pcl::PointCloud<PointPose3D>::Ptr keyframe(new pcl::PointCloud<PointPose3D>());
             pcl::copyPointCloud(*source_cloud, *keyframe);
             keyframes.emplace_back(keyframe);
-
             // build sub-map
-            // gicp.clearTarget();
-            // gicp.setInputTarget(source_cloud);
-            // set target cloud
-            *target_cloud = *source_cloud;
-            *target_cov = *source_cov;
-            kd_tree = std::make_shared<small_gicp::KdTree<pcl::PointCloud<pcl::PointCovariance>>>(target_cov, small_gicp::KdTreeBuilderOMP(params.number_of_cores_));
-
-            // std::cout << "Initialization: " << target_cov->points.size() << std::endl;
+            if (params.use_ikd_tree_)
+            {
+                KD_TREE<PointPose3D>::PointVector point_vec_cloud;
+                point_vec_cloud.resize(source_cloud->points.size());
+                for (int i = 0; i < int(source_cloud->points.size()); i++)
+                {
+                    source_cloud->points[i].intensity = i;
+                }
+                std::copy(source_cloud->points.begin(), source_cloud->points.end(), point_vec_cloud.begin());
+                ikd_tree->Build(point_vec_cloud);
+                gicp.clearTarget();
+                gicp.setInputTargetWithIkdTree(source_cloud, ikd_tree);
+                auto end_build_time = chrono::high_resolution_clock::now();
+                auto build_duration = chrono::duration_cast<chrono::microseconds>(end_build_time-end_undistort_time).count();
+                RCLCPP_INFO(rclcpp::get_logger("odometry"), "\033[1;31m--->ikd tree build: %d points in %fms.\033[0m", point_vec_cloud.size(), float(build_duration)/1e3);
+            }
+            else
+            {
+                gicp.clearTarget();
+                gicp.setInputTarget(source_cloud);
+            }
 
             // initialize imu preintergration
             auto start_optimize_time = chrono::high_resolution_clock::now();
             imu_preintegration->initialization(current_pose, scan_end_time);
+
             #if DEBUG_GPS_CODE
             nav_msgs::msg::Odometry sync_gps_odom;
             if (imu_preintegration->getSyncGps(&sync_gps_odom))
@@ -762,47 +733,49 @@ public:
             }
             #endif
             pub_odometry->publish(gtsamPoseToOdometryMsg(current_pose, scan_time, params.name_ + params.odometry_frame_));
-            // std::cout << "Initialization 10" << std::endl;
+
             auto end_optimize_time = chrono::high_resolution_clock::now();
             auto optimize_duration = chrono::duration_cast<chrono::microseconds>(end_optimize_time-start_optimize_time).count();
             RCLCPP_DEBUG(rclcpp::get_logger("odometry"), "Optimize %fms", float(optimize_duration)/1e3);
-            // std::cout << "Initialization 11" << std::endl;
 
             first_scan = false;
             return;
         }
         else
         {
-            // std::cout << "SCAN 01" << std::endl;
             /*** scan2map matching ***/
             auto start_scan2map_time = chrono::high_resolution_clock::now();
             // align clouds
-            // pcl::PointCloud<PointPose3D>::Ptr unused_result(new pcl::PointCloud<PointPose3D>());
-            // auto aligned = pcl::make_shared<pcl::PointCloud<PointPose3D>>();
-
-            // std::cout << "SCAN 02" << std::endl;
-            // gicp.clearSource();
-            // std::cout << "SCAN 03" << std::endl;
-            // gicp.setInputSource(source_cloud);
-            // std::cout << "SCAN 04" << std::endl;
-
-            // std::cout << "SCAN: " << source_cov->points.size() << std::endl;
-            // gicp.align(*unused_result, current_pose.matrix().cast<float>());
-
-            Eigen::Isometry3d guess = Eigen::Isometry3d::Identity();
-            guess.matrix() = current_pose.matrix();
-            auto result = gicp.align(*target_cov, *source_cov, *kd_tree, guess);
-            // std::cout << "SCAN 05" << std::endl;
-            // std::cout << "UNUSED RESULT: " << aligned->points.size() << std::endl;
+            pcl::PointCloud<PointPose3D>::Ptr unused_result(new pcl::PointCloud<PointPose3D>);
+            if (params.use_ikd_tree_)
+            {
+                std::shared_ptr<KD_TREE<PointPose3D>> ikd_tree_source;
+                ikd_tree_source = std::make_shared<KD_TREE<PointPose3D>>(0.3, 0.6, params.leaf_size_);
+                KD_TREE<PointPose3D>::PointVector point_vec_cloud;
+                point_vec_cloud.resize(source_cloud->points.size());
+                for (int i = 0; i < int(source_cloud->points.size()); i++)
+                {
+                    source_cloud->points[i].intensity = i;
+                }
+                std::copy(source_cloud->points.begin(), source_cloud->points.end(), point_vec_cloud.begin());
+                ikd_tree_source->Build(point_vec_cloud);
+                gicp.clearSource();
+                gicp.setInputSourceWithIkdTree(source_cloud, ikd_tree_source);
+            }
+            else
+            {
+                gicp.clearSource();
+                gicp.setInputSource(source_cloud, current_pose.matrix());
+            }
+            gicp.align(*unused_result, current_pose.matrix().cast<float>());
             auto end_scan2map_time = chrono::high_resolution_clock::now();
 
             /*** handle pose and map ***/
             // get corrected pose transformation
             gtsam::noiseModel::Diagonal::shared_ptr noise_model;
-            // if (!gicp.hasConverged())
-            if (!result.converged)
+            if (!gicp.hasConverged())
             {
-                RCLCPP_ERROR(rclcpp::get_logger("odometry"), "\033[1;31mRobot<%s> GICP not converged\033[0m", params.name_.c_str());
+                // RCLCPP_INFO(rclcpp::get_logger("odometry"), "\033[1;31mRobot<%s> GICP not converged\033[0m", params.name_.c_str());
                 skip_frame++;
                 return;
             }
@@ -810,13 +783,10 @@ public:
             {
                 skip_frame = 0;
                 noise_model = gtsam::noiseModel::Diagonal::Sigmas((gtsam::Vector(6) << 1e-4, 1e-4, 1e-4, 1e-2, 1e-2, 1e-2).finished());
-                // current_pose = gtsam::Pose3(gicp.getFinalTransformation().cast<double>());
-                current_pose = gtsam::Pose3(result.T_target_source.matrix());
+                current_pose = gtsam::Pose3(gicp.getFinalTransformation().cast<double>());
             }
 
             // RCLCPP_INFO(rclcpp::get_logger("odometry"), "\033[1;32mRobot<%s> %d current pose: %.2f,%.2f,%.2f.\033[0m", params.name_.c_str(), gicp.hasConverged(), current_pose.translation().x(), current_pose.translation().y(), current_pose.translation().z());
-            RCLCPP_INFO(rclcpp::get_logger("odometry"), "\033[1;32mRobot<%s> %d current pose: %.2f,%.2f,%.2f.\033[0m", 
-            params.name_.c_str(), result.converged, current_pose.translation().x(), current_pose.translation().y(), current_pose.translation().z());
             // optimize
             const auto cur_symbol = imu_preintegration->getCurrentSymbol();
             const auto imu_pose = imu_preintegration->trans2ImuPose(current_pose);
@@ -905,8 +875,8 @@ public:
             auto match_duration = chrono::duration_cast<chrono::microseconds>(end_scan2map_time - start_scan2map_time).count();
             auto optimize_duration = chrono::duration_cast<chrono::microseconds>(end_optimize_time - end_scan2map_time).count();
             auto total_duration = chrono::duration_cast<chrono::microseconds>(end_optimize_time - start_handle_time).count();
-            RCLCPP_DEBUG(rclcpp::get_logger("odometry"), "\033[1;32mRobot[%s] undistort: %.2fms, match: %.2fms, opt: %.2fms, TOTAL: %.2fms.\033[0m",
-                params.name_.c_str(), float(undistort_duration)/1e3, float(match_duration)/1e3, float(optimize_duration)/1e3, float(total_duration)/1e3);
+            // RCLCPP_INFO(rclcpp::get_logger("odometry"), "\033[1;32mRobot[%s] undistort: %.2fms, match: %.2fms, opt: %.2fms, TOTAL: %.2fms.\033[0m",
+            //     params.name_.c_str(), float(undistort_duration)/1e3, float(match_duration)/1e3, float(optimize_duration)/1e3, float(total_duration)/1e3);
             
             system_monitor->addOptimizeTime(float(total_duration)/1e3);
         }
@@ -1101,80 +1071,173 @@ public:
         auto start_submap_time = chrono::high_resolution_clock::now();
         pcl::PointCloud<PointPose3D>::Ptr nearframe(new pcl::PointCloud<PointPose3D>());
         /*** get submap ***/
-        pcl::PointCloud<PointPose3D>::Ptr surroundingKeyPoses(new pcl::PointCloud<PointPose3D>());
-        pcl::PointCloud<PointPose3D>::Ptr surroundingKeyPosesDS(new pcl::PointCloud<PointPose3D>());
-        std::vector<int> pointSearchInd;
-        std::vector<float> pointSearchSqDis;
-
-        // extract all the nearby key poses and downsample them
-        kdtreeSurroundingKeyPoses->setInputCloud(keyposes_cloud); // create kd-tree
-        kdtreeSurroundingKeyPoses->radiusSearch(keyposes_cloud->back(), (double)params.keyframes_search_radius_, pointSearchInd, pointSearchSqDis);
-        for (int i = 0; i < (int)pointSearchInd.size(); ++i)
+        if (params.use_ikd_tree_)
         {
-            const int id = pointSearchInd[i];
-            surroundingKeyPoses->push_back(keyposes_cloud->points[id]);
-        }
-
-        downSizeFilterSurroundingKeyPoses.setInputCloud(surroundingKeyPoses);
-        downSizeFilterSurroundingKeyPoses.filter(*surroundingKeyPosesDS);
-        for (auto& pt : surroundingKeyPosesDS->points)
-        {
-            kdtreeSurroundingKeyPoses->nearestKSearch(pt, 1, pointSearchInd, pointSearchSqDis);
-            pt.intensity = keyposes_cloud->points[pointSearchInd[0]].intensity;
-        }
-
-        // also extract some latest key frames in case the robot rotates in one position
-        const int numPoses = keyposes_cloud->size();
-        for (int i = numPoses-1; i >= numPoses - 40; --i)
-        {
-            if (i >= 0)
+            if(msg.update_keyposes == true)
             {
-                surroundingKeyPosesDS->push_back(keyposes_cloud->points[i]);
-            }
-        }
+                // get a new target cloud
+                pcl::PointCloud<PointPose3D>::Ptr surroundingKeyPoses(new pcl::PointCloud<PointPose3D>());
+                pcl::PointCloud<PointPose3D>::Ptr surroundingKeyPosesDS(new pcl::PointCloud<PointPose3D>());
+                std::vector<int> pointSearchInd;
+                std::vector<float> pointSearchSqDis;
 
-        // fuse the map
-        for (int i = 0; i < (int)surroundingKeyPosesDS->size(); ++i)
-        {
-            auto index = (int)surroundingKeyPosesDS->points[i].intensity;
-            if (transformed_keyframes.find(index) != transformed_keyframes.end())
-            {
-                *nearframe += *transformed_keyframes.at(index);
+                // extract all the nearby key poses and downsample them
+                kdtreeSurroundingKeyPoses->setInputCloud(keyposes_cloud); // create kd-tree
+                kdtreeSurroundingKeyPoses->radiusSearch(keyposes_cloud->back(), (double)params.keyframes_search_radius_, pointSearchInd, pointSearchSqDis);
+                for (int i = 0; i < (int)pointSearchInd.size(); ++i)
+                {
+                    const int id = pointSearchInd[i];
+                    surroundingKeyPoses->push_back(keyposes_cloud->points[id]);
+                }
+
+                downSizeFilterSurroundingKeyPoses.setInputCloud(surroundingKeyPoses);
+                downSizeFilterSurroundingKeyPoses.filter(*surroundingKeyPosesDS);
+                for (auto& pt : surroundingKeyPosesDS->points)
+                {
+                    kdtreeSurroundingKeyPoses->nearestKSearch(pt, 1, pointSearchInd, pointSearchSqDis);
+                    pt.intensity = keyposes_cloud->points[pointSearchInd[0]].intensity;
+                }
+
+                // also extract some latest key frames in case the robot rotates in one position
+                const int numPoses = keyposes_cloud->size();
+                for (int i = numPoses-1; i >= numPoses-10; --i)
+                {
+                    if (i >= 0)
+                    {
+                        surroundingKeyPosesDS->push_back(keyposes_cloud->points[i]);
+                    }
+                }
+
+                // fuse the map
+                for (int i = 0; i < (int)surroundingKeyPosesDS->size(); ++i)
+                {
+                    const auto dis = sqrt((surroundingKeyPosesDS->points[i].x - keyposes_cloud->back().x)*(surroundingKeyPosesDS->points[i].x - keyposes_cloud->back().x) +
+                        (surroundingKeyPosesDS->points[i].y - keyposes_cloud->back().x)*(surroundingKeyPosesDS->points[i].x - keyposes_cloud->back().y) +
+                        (surroundingKeyPosesDS->points[i].z - keyposes_cloud->back().x)*(surroundingKeyPosesDS->points[i].x - keyposes_cloud->back().z));
+                    if (dis > params.keyframes_search_radius_)
+                        continue;
+
+                    const auto index = (int)surroundingKeyPosesDS->points[i].intensity;
+                    if (transformed_keyframes.find(index) != transformed_keyframes.end())
+                    {
+                        *nearframe += *transformed_keyframes.at(index);
+                    }
+                    else
+                    {
+                        auto tf_pc = transformPointCloud(keyframes[index], keyposes[index]);
+                        transformed_keyframes.emplace(make_pair(index, tf_pc));
+                        *nearframe += *tf_pc;
+                    }
+                }
+                voxel_grid.setInputCloud(nearframe);
+                voxel_grid.filter(*target_cloud);
+
+                // rebuild tree
+                auto begin_build_time = chrono::high_resolution_clock::now();
+                ikd_tree = std::make_shared<KD_TREE<PointPose3D>>(0.3, 0.6, params.leaf_size_);
+                KD_TREE<PointPose3D>::PointVector point_vec_cloud2;
+                point_vec_cloud2.resize(target_cloud->points.size());
+                for (int i = 0; i < int(target_cloud->points.size()); i++)
+                {
+                    target_cloud->points[i].intensity = i;
+                }
+                std::copy(target_cloud->points.begin(), target_cloud->points.end(), point_vec_cloud2.begin());
+                ikd_tree->Build(point_vec_cloud2);
+                auto end_build_time = chrono::high_resolution_clock::now();
+                auto build_duration = chrono::duration_cast<chrono::microseconds>(end_build_time - begin_build_time).count();
+                RCLCPP_INFO(rclcpp::get_logger("odometry"), "\033[1;32mRobot[%s] ikdtree build: %.2fms..\033[0m",
+                    params.name_.c_str(), float(build_duration)/1e3);
             }
             else
             {
-                auto tf_pc = transformPointCloud(keyframes[index], keyposes[index]);
-                transformed_keyframes.emplace(make_pair(index,tf_pc));
-                *nearframe += *tf_pc;
+                // add points
+                auto begin_build_time = chrono::high_resolution_clock::now();
+                KD_TREE<PointPose3D>::PointVector point_vec_cloud;
+                auto tf_pc = transformPointCloud(keyframes[index], optimized_keypose);
+                point_vec_cloud.resize(tf_pc->points.size());
+                for (int i = 0; i < int(tf_pc->points.size()); i++)
+                {
+                    tf_pc->points[i].intensity = i + target_cloud->size();
+                }
+                std::copy(tf_pc->points.begin(), tf_pc->points.end(), point_vec_cloud.begin());
+                ikd_tree->Add_Points(point_vec_cloud, false);
+
+                *target_cloud += *tf_pc;
+
+                auto end_build_time = chrono::high_resolution_clock::now();
+                auto build_duration = chrono::duration_cast<chrono::microseconds>(end_build_time - begin_build_time).count();
+                RCLCPP_INFO(rclcpp::get_logger("odometry"), "\033[1;32mRobot[%s] ikdtree add: %.2fms..\033[0m",
+                    params.name_.c_str(), float(build_duration)/1e3);
             }
-        }
 
-        if (transformed_keyframes.size() > 1000)
+            gicp.clearTarget();
+            gicp.setInputTargetWithIkdTree(target_cloud, ikd_tree);
+        }
+        else
         {
-            transformed_keyframes.clear();
+            pcl::PointCloud<PointPose3D>::Ptr surroundingKeyPoses(new pcl::PointCloud<PointPose3D>());
+            pcl::PointCloud<PointPose3D>::Ptr surroundingKeyPosesDS(new pcl::PointCloud<PointPose3D>());
+            std::vector<int> pointSearchInd;
+            std::vector<float> pointSearchSqDis;
+
+            // extract all the nearby key poses and downsample them
+            kdtreeSurroundingKeyPoses->setInputCloud(keyposes_cloud); // create kd-tree
+            kdtreeSurroundingKeyPoses->radiusSearch(keyposes_cloud->back(), (double)params.keyframes_search_radius_, pointSearchInd, pointSearchSqDis);
+            for (int i = 0; i < (int)pointSearchInd.size(); ++i)
+            {
+                const int id = pointSearchInd[i];
+                surroundingKeyPoses->push_back(keyposes_cloud->points[id]);
+            }
+
+            downSizeFilterSurroundingKeyPoses.setInputCloud(surroundingKeyPoses);
+            downSizeFilterSurroundingKeyPoses.filter(*surroundingKeyPosesDS);
+            for (auto& pt : surroundingKeyPosesDS->points)
+            {
+                kdtreeSurroundingKeyPoses->nearestKSearch(pt, 1, pointSearchInd, pointSearchSqDis);
+                pt.intensity = keyposes_cloud->points[pointSearchInd[0]].intensity;
+            }
+
+            // also extract some latest key frames in case the robot rotates in one position
+            const int numPoses = keyposes_cloud->size();
+            for (int i = numPoses-1; i >= numPoses - 40; --i)
+            {
+                if (i >= 0)
+                {
+                    surroundingKeyPosesDS->push_back(keyposes_cloud->points[i]);
+                }
+            }
+
+            // fuse the map
+            for (int i = 0; i < (int)surroundingKeyPosesDS->size(); ++i)
+            {
+                auto index = (int)surroundingKeyPosesDS->points[i].intensity;
+                if (transformed_keyframes.find(index) != transformed_keyframes.end())
+                {
+                    *nearframe += *transformed_keyframes.at(index);
+                }
+                else
+                {
+                    auto tf_pc = transformPointCloud(keyframes[index], keyposes[index]);
+                    transformed_keyframes.emplace(make_pair(index,tf_pc));
+                    *nearframe += *tf_pc;
+                }
+            }
+
+            if (transformed_keyframes.size() > 1000)
+            {
+                transformed_keyframes.clear();
+            }
+
+            voxel_grid.setInputCloud(nearframe);
+            voxel_grid.filter(*target_cloud);
+
+            gicp.clearTarget();
+            gicp.setInputTarget(target_cloud);
         }
-
-        voxel_grid.setInputCloud(nearframe);
-        voxel_grid.filter(*target_cloud);
-        const int cloudSize = target_cloud->size();
-        target_cov->points.resize(cloudSize);
-        for (size_t i = 0; i < cloudSize; i++)
-        {
-            target_cov->points[i].x = target_cloud->points[i].x;
-            target_cov->points[i].y = target_cloud->points[i].y;
-            target_cov->points[i].z = target_cloud->points[i].z;
-        }
-        small_gicp::estimate_covariances_omp(*target_cov, 4, params.number_of_cores_);
-        // pcl::copyPointCloud(*target_cloud, *target_cov);
-        // target_cov = small_gicp::voxelgrid_sampling_omp<pcl::PointCloud<PointPose3D>, pcl::PointCloud<pcl::PointCovariance>>(*nearframe, params.leaf_size_);
-        kd_tree = std::make_shared<small_gicp::KdTree<pcl::PointCloud<pcl::PointCovariance>>>(target_cov, small_gicp::KdTreeBuilderOMP(params.number_of_cores_));
-
-        // gicp.clearTarget();
-        // gicp.setInputTarget(target_cloud);
-
         auto end_submap_time = chrono::high_resolution_clock::now();
         auto add_duration3 = chrono::duration_cast<chrono::microseconds>(end_submap_time-start_submap_time).count();
         RCLCPP_DEBUG(rclcpp::get_logger("odometry"), "\033[1;34mRobot<%s> source cloud: %d, target cloud: %d in %fms\033[0m", params.name_.c_str(), source_cloud->size(), target_cloud->size(), float(add_duration3)/1e3);
+        
         // publish submap
         auto map_cloud_msg = std::make_unique<sensor_msgs::msg::PointCloud2>();
         pcl::toROSMsg(*target_cloud, *map_cloud_msg);
@@ -1462,8 +1525,6 @@ public:
             return make_pair(-1, LoopClosure());
         }
 
-        std::cout << "calculateTransformation" << std::endl;
-
         // loop closure symbol
         const auto loop_robot0 = lc_candidate.robot0;
         const auto loop_robot1 = lc_candidate.robot1;
@@ -1503,18 +1564,15 @@ public:
             *scan_cloud = *keyframes[loop_key0];
         }
         // source pointcloud of scan2map matching
-        // loop_closure_voxelgrid.setInputCloud(scan_cloud);
-        // pcl::PointCloud<pcl::PointXYZI>::Ptr scan_cloud_filtered(new pcl::PointCloud<pcl::PointXYZI>);
-        // loop_closure_voxelgrid.filter(*scan_cloud_filtered);
+        loop_closure_voxelgrid.setInputCloud(scan_cloud);
+        pcl::PointCloud<pcl::PointXYZI>::Ptr scan_cloud_filtered(new pcl::PointCloud<pcl::PointXYZI>);
+        loop_closure_voxelgrid.filter(*scan_cloud_filtered);
         // target pointcloud of scan2map matching
         loop_pose1 = keyposes[loop_key1];
         *map_cloud = *surroundingMap(loop_key1, params.history_keyframe_search_num_);
-        // loop_closure_voxelgrid.setInputCloud(map_cloud);
-        // pcl::PointCloud<pcl::PointXYZI>::Ptr map_cloud_filtered(new pcl::PointCloud<pcl::PointXYZI>);
-        // loop_closure_voxelgrid.filter(*map_cloud_filtered);
-
-        pcl::PointCloud<pcl::PointCovariance>::Ptr scan_cloud_filtered = small_gicp::voxelgrid_sampling_omp<pcl::PointCloud<PointPose3D>, pcl::PointCloud<pcl::PointCovariance>>(*scan_cloud, params.leaf_size_);
-        pcl::PointCloud<pcl::PointCovariance>::Ptr map_cloud_filtered = small_gicp::voxelgrid_sampling_omp<pcl::PointCloud<PointPose3D>, pcl::PointCloud<pcl::PointCovariance>>(*map_cloud, params.leaf_size_);
+        loop_closure_voxelgrid.setInputCloud(map_cloud);
+        pcl::PointCloud<pcl::PointXYZI>::Ptr map_cloud_filtered(new pcl::PointCloud<pcl::PointXYZI>);
+        loop_closure_voxelgrid.filter(*map_cloud_filtered);
 
         // fail safe check for pointcloud
         if (scan_cloud->size() < 300 || map_cloud->size() < 1000)
@@ -1523,49 +1581,27 @@ public:
             return make_pair(0, lc_result);
         }
 
-        small_gicp::estimate_covariances_omp(*scan_cloud_filtered, 4, params.number_of_cores_);
-        small_gicp::estimate_covariances_omp(*map_cloud_filtered, 4, params.number_of_cores_);
-
-        auto map_kd_tree = std::make_shared<small_gicp::KdTree<pcl::PointCloud<pcl::PointCovariance>>>(map_cloud_filtered, small_gicp::KdTreeBuilderOMP(params.number_of_cores_));
-
         /*** calculate transform using gicp ***/
         // registration method
         if (loop_robot0 == loop_robot1)
         {
-            gicp_loop.rejector.max_dist_sq = params.intra_icp_max_correspondence_distance_ * params.intra_icp_max_correspondence_distance_;
-            gicp_loop.optimizer.max_iterations = params.intra_icp_iterations_time_;
-            // gicp_loop.setMaxCorrespondenceDistance(params.intra_icp_max_correspondence_distance_);
-            // gicp_loop.setMaximumIterations(params.intra_icp_iterations_time_);
+            gicp_loop.setMaxCorrespondenceDistance(params.intra_icp_max_correspondence_distance_);
+            gicp_loop.setMaximumIterations(params.intra_icp_iterations_time_);
         }
         else
         {
-            gicp_loop.rejector.max_dist_sq = params.inter_icp_max_correspondence_distance_ * params.inter_icp_max_correspondence_distance_;
-            gicp_loop.optimizer.max_iterations = params.inter_icp_iterations_time_;
-            // gicp_loop.setMaxCorrespondenceDistance(params.inter_icp_max_correspondence_distance_);
-            // gicp_loop.setMaximumIterations(params.inter_icp_iterations_time_);
+            gicp_loop.setMaxCorrespondenceDistance(params.inter_icp_max_correspondence_distance_);
+            gicp_loop.setMaximumIterations(params.inter_icp_iterations_time_);
         }
 
         // align clouds
-        std::cout << "calculateTransformation: align" << std::endl;
-        // gicp_loop.setInputSource(scan_cloud_filtered);
-        // gicp_loop.setInputTarget(map_cloud_filtered);
-        // gicp_loop.align(*unused_result, loop_pose0.matrix().cast<float>());
-        Eigen::Isometry3d guess = Eigen::Isometry3d::Identity();
-        guess.matrix() = loop_pose0.matrix();
-        auto result = gicp_loop.align(*map_cloud_filtered, *scan_cloud_filtered, *map_kd_tree, guess);
+        gicp_loop.setInputSource(scan_cloud_filtered);
+        gicp_loop.setInputTarget(map_cloud_filtered);
+        gicp_loop.align(*unused_result, loop_pose0.matrix().cast<float>());
 
         // check if pass fitness score
-        // const auto fitness = gicp_loop.getFitnessScore();
-        // if (gicp_loop.hasConverged() == false || fitness > params.fitness_score_threshold_)
-        // {
-        //     RCLCPP_DEBUG(rclcpp::get_logger("loop_log_mini"), "\033[1;33m[LoopClosure] [%c%d][%c%d] GICP failed (%.2f > %.2f). Reject.\033[0m",
-        //         loop_robot0+'a', loop_key0, loop_robot1+'a', loop_key1, fitness, params.fitness_score_threshold_);
-        //     return make_pair(0, lc_result);
-        // }
-        // RCLCPP_DEBUG(rclcpp::get_logger("loop_log_mini"), "\033[1;33m[LoopClosure] [%c%d][%c%d] GICP passed (%.2f < %.2f). Add.\033[0m",
-        //     loop_robot0+'a', loop_key0, loop_robot1+'a', loop_key1, fitness, params.fitness_score_threshold_);
-        const auto fitness = result.error;
-        if (result.converged == false)
+        const auto fitness = gicp_loop.getFitnessScore();
+        if (gicp_loop.hasConverged() == false || fitness > params.fitness_score_threshold_)
         {
             RCLCPP_DEBUG(rclcpp::get_logger("loop_log_mini"), "\033[1;33m[LoopClosure] [%c%d][%c%d] GICP failed (%.2f > %.2f). Reject.\033[0m",
                 loop_robot0+'a', loop_key0, loop_robot1+'a', loop_key1, fitness, params.fitness_score_threshold_);
@@ -1575,8 +1611,7 @@ public:
             loop_robot0+'a', loop_key0, loop_robot1+'a', loop_key1, fitness, params.fitness_score_threshold_);
 
         // get corrected pose transformation
-        // const auto pose_from = gtsam::Pose3(gicp_loop.getFinalTransformation().cast<double>());
-        const auto pose_from = gtsam::Pose3(result.T_target_source.matrix());
+        const auto pose_from = gtsam::Pose3(gicp_loop.getFinalTransformation().cast<double>());
         const auto pose_to = loop_pose1;
 
         // noise model
@@ -1588,8 +1623,7 @@ public:
         measurement.pose = pose_from.between(pose_to);
         measurement.covariance = loop_noise->covariance();
         lc_result.measurement = measurement;
-        // lc_result.fitness_score = fitness;
-        lc_result.fitness_score = params.fitness_score_threshold_ - 0.1;
+        lc_result.fitness_score = fitness;
 
         return make_pair(1, lc_result);
     }
@@ -1660,7 +1694,6 @@ int main(
     options.use_intra_process_comms(false);
     options.enable_topic_statistics(false);
     rclcpp::executors::MultiThreadedExecutor exec(rclcpp::ExecutorOptions(), 2, true);
-    // rclcpp::executors::MultiThreadedExecutor exec(rclcpp::executor::ExecutorArgs(), 2, true);
 
     auto LO = std::make_shared<co_lrio::LidarOdometry>(options);
     exec.add_node(LO);

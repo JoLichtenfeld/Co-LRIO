@@ -11,8 +11,7 @@ def generate_launch_description():
 
 	ld = LaunchDescription()
 
-	# bag_path = '/home/changsik/dataset/rosbag/S3E_Square_3'
-	bag_path = '/home/changsik/dataset/rosbag/S3E_Campus_Road_3'
+	bag_path = '/home/glen/dataset/S3E/S3Ev2/S3E_Campus_Road_2'
 	ns_mappings = {
      'Alpha': 'robot_0',
      'Bob': 'robot_1',
@@ -24,7 +23,6 @@ def generate_launch_description():
 		cmd=[
 			'ros2', 'bag', 'play',
 			bag_path,
-			'--clock',
 			'--remap',
 			'/Alpha/velodyne_points:=' + ns_mappings['Alpha'] + '/velodyne_points',
 			'/Alpha/imu/data:=' + ns_mappings['Alpha'] + '/imu/data',
@@ -33,6 +31,7 @@ def generate_launch_description():
 			'/Alpha/fix:=' + ns_mappings['Alpha'] + '/fix',
 			'/Alpha/time_reference:=' + ns_mappings['Alpha'] + '/time_reference',
 			'/Alpha/vel:=' + ns_mappings['Alpha'] + '/vel',
+			'/Alpha/nlink_linktrack_nodeframe2:=' + ns_mappings['Alpha'] + '/nlink_linktrack_nodeframe2',
    
 			'/Bob/velodyne_points:=' + ns_mappings['Bob'] + '/velodyne_points',
 			'/Bob/imu/data:=' + ns_mappings['Bob'] + '/imu/data',
@@ -41,6 +40,7 @@ def generate_launch_description():
 			'/Bob/fix:=' + ns_mappings['Bob'] + '/fix',
 			'/Bob/time_reference:=' + ns_mappings['Bob'] + '/time_reference',
 			'/Bob/vel:=' + ns_mappings['Bob'] + '/vel',
+			'/Bob/nlink_linktrack_nodeframe2:=' + ns_mappings['Bob'] + '/nlink_linktrack_nodeframe2',
    
 			'/Carol/velodyne_points:=' + ns_mappings['Carol'] + '/velodyne_points',
 			'/Carol/imu/data:=' + ns_mappings['Carol'] + '/imu/data',
@@ -49,6 +49,7 @@ def generate_launch_description():
 			'/Carol/fix:=' + ns_mappings['Carol'] + '/fix',
 			'/Carol/time_reference:=' + ns_mappings['Carol'] + '/time_reference',
 			'/Carol/vel:=' + ns_mappings['Carol'] + '/vel',
+			'/Carol/nlink_linktrack_nodeframe2:=' + ns_mappings['Carol'] + '/nlink_linktrack_nodeframe2',
 		],
 		output='screen',
 	)
