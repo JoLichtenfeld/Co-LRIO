@@ -11,7 +11,7 @@ def generate_launch_description():
 
 	ld = LaunchDescription()
 
-	bag_path = '/home/glen/dataset/S3E/S3Ev2/S3E_Campus_Road_2'
+	bag_path = '/home/jonathan/bags/s3e/S3E_Campus_Road_2'
 	ns_mappings = {
      'Alpha': 'robot_0',
      'Bob': 'robot_1',
