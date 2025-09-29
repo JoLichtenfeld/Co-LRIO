@@ -29,8 +29,9 @@
   <build_depend>tf2</build_depend>
   <build_depend>OpenCV</build_depend>
   <build_depend>PCL</build_depend>
+  <build_depend>pcl_conversions</build_depend>
   <build_depend>GTSAM</build_depend>
-  <build_depend>Eigen</build_depend>
+  <build_depend>Eigen3</build_depend>
   <build_depend>libstatistics_collector</build_depend>
   <build_depend>rclcpp_components</build_depend>
   <build_depend>rcutils</build_depend>
@@ -52,8 +53,9 @@
   <exec_depend>tf2</exec_depend>
   <exec_depend>OpenCV</exec_depend>
   <exec_depend>PCL</exec_depend>
+  <exec_depend>pcl_conversions</exec_depend>
   <exec_depend>GTSAM</exec_depend>
-  <exec_depend>Eigen</exec_depend>
+  <exec_depend>Eigen3</exec_depend>
   <exec_depend>libstatistics_collector</exec_depend>
   <exec_depend>rclcpp_components</exec_depend>
   <exec_depend>rcutils</exec_depend>

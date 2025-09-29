@@ -4,6 +4,10 @@ project(co_lrio)
 # set(CMAKE_CXX_STANDARD 14)
 # set(CMAKE_CXX_STANDARD_REQUIRED True)
 
+# Set RPATH to include /usr/local/lib for runtime library search
+set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
+set(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_RPATH}:/usr/local/lib")
+
 if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
   set(CMAKE_BUILD_TYPE Release)
 endif()
@@ -20,6 +24,7 @@ find_package(sensor_msgs REQUIRED)
 find_package(geometry_msgs REQUIRED)
 find_package(visualization_msgs REQUIRED)
 find_package(pcl_msgs REQUIRED)
+find_package(pcl_conversions REQUIRED)
 find_package(tf2 REQUIRED)
 find_package(tf2_ros REQUIRED)
 find_package(tf2_sensor_msgs REQUIRED)
@@ -34,16 +39,22 @@ if (OPENMP_FOUND)
 endif()
 find_package(PCL REQUIRED)
 find_package(GTSAM REQUIRED)
-find_package(Eigen REQUIRED)
+find_package(PkgConfig REQUIRED)
+pkg_check_modules(TBB REQUIRED tbb)
+find_package(Eigen3 REQUIRED)
 
 # Include directories
 include_directories(
 	include
   include/third_parties
-  ${EIGEN_INCLUDE_DIRS}
+  ${EIGEN3_INCLUDE_DIRS}
   ${PCL_INCLUDE_DIRS}
   ${OpenCV_INCLUDE_DIRS}
+  ${TBB_INCLUDE_DIRS}
 )
+
+# Link directories
+link_directories(${TBB_LIBRARY_DIRS})
 
 # Defined message and service
 set(msg_files
@@ -119,7 +130,7 @@ add_library(risam_lib
   include/third_parties/risam/RISAM2.cpp
   include/third_parties/risam/RISAM2.h
 )
-target_link_libraries(risam_lib PRIVATE gtsam)
+target_link_libraries(risam_lib PRIVATE gtsam ${TBB_LIBRARIES})
 install(
   TARGETS risam_lib
   ARCHIVE DESTINATION lib
@@ -167,20 +178,20 @@ install(
 add_executable(${PROJECT_NAME}_lidar_odometry src/scanContextDescriptor.cpp src/lidarIrisDescriptor.cpp  src/lidarOdometry.cpp)
 ament_target_dependencies(${PROJECT_NAME}_lidar_odometry
   rclcpp rclpy rclcpp_components
-  std_msgs nav_msgs sensor_msgs geometry_msgs visualization_msgs pcl_msgs
+  std_msgs nav_msgs sensor_msgs geometry_msgs visualization_msgs pcl_msgs pcl_conversions
   tf2 tf2_ros tf2_geometry_msgs tf2_eigen tf2_sensor_msgs
-  OpenCV PCL GTSAM Eigen)
-target_link_libraries(${PROJECT_NAME}_lidar_odometry gtsam gtsam_unstable gicp_lib geographic_lib)
+  OpenCV PCL GTSAM Eigen3)
+target_link_libraries(${PROJECT_NAME}_lidar_odometry gtsam gtsam_unstable gicp_lib geographic_lib ${TBB_LIBRARIES})
 rosidl_target_interfaces(${PROJECT_NAME}_lidar_odometry ${PROJECT_NAME} "rosidl_typesupport_cpp")
 
 # Concentrated mapping
 add_executable(${PROJECT_NAME}_concentrated_mapping src/scanContextDescriptor.cpp src/lidarIrisDescriptor.cpp src/concentratedMapping.cpp)
 ament_target_dependencies(${PROJECT_NAME}_concentrated_mapping
   rclcpp rclpy rclcpp_components
-  std_msgs nav_msgs sensor_msgs geometry_msgs visualization_msgs pcl_msgs
+  std_msgs nav_msgs sensor_msgs geometry_msgs visualization_msgs pcl_msgs pcl_conversions
   tf2 tf2_ros tf2_geometry_msgs tf2_eigen tf2_sensor_msgs
-  OpenCV PCL GTSAM Eigen)
-target_link_libraries(${PROJECT_NAME}_concentrated_mapping gtsam risam_lib fast_max_clique_finder nabo_lib gicp_lib geographic_lib)
+  OpenCV PCL GTSAM Eigen3)
+target_link_libraries(${PROJECT_NAME}_concentrated_mapping gtsam risam_lib fast_max_clique_finder nabo_lib gicp_lib geographic_lib ${TBB_LIBRARIES})
 rosidl_target_interfaces(${PROJECT_NAME}_concentrated_mapping ${PROJECT_NAME} "rosidl_typesupport_cpp")
 
 install(
