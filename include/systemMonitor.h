@@ -77,7 +77,7 @@ public:
             const float rt = (float)runtime_sum / time_window_f;
             const float rtc = (float)std::max(int(runtime_count_sum),1) / time_window_f;
             if (nth_received >= time_window_i)
-                RCLCPP_INFO(rclcpp::get_logger("monitor"), "(In %ds) KF opt hz: %.2f; rcv bw: %.2f kBps; avg opt time: %.2f ms for %d frames",
+                RCLCPP_INFO(rclcpp::get_logger("monitor"), "(In %ds) wt hz: %.2f; rcv bw: %.2f kBps; avg opt time: %.2f ms for %d frames",
                     time_window_i, hz, bw, rt/rtc, runtime_count_sum);
             else
             {
