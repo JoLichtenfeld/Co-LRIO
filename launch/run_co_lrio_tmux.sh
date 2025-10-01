@@ -26,7 +26,7 @@ SESSION="co_lrio"
 HOST_ROBOT_0=""                         # Window 1: robot_0 (TF + robot_state_publisher + odometry)
 HOST_ROBOT_1=""                         # Window 2: robot_1 (TF + robot_state_publisher + odometry)  
 HOST_ROBOT_2=""                         # Window 3: robot_2 (TF + robot_state_publisher + odometry)
-HOST_MAPPING="jonathan@d210"            # Window 4: concentrated mapping node
+HOST_MAPPING="" #jonathan@d210"            # Window 4: concentrated mapping node
 HOST_VISUALIZATION=""                   # Window 5: rviz + bag playback
 
 # SSH options for all remote connections

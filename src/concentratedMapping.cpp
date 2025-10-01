@@ -535,7 +535,7 @@ public:
         serializer.deserialize_message(serialized_msg.get(), &msg);
 
         auto robot_id = msg.robot_id;
-        RCLCPP_INFO(rclcpp::get_logger("optimization_log"), "\033[0;36m<optimization> receive Request (Key %d) %d\033[0m", robot_id, msg.index_to.index());
+        RCLCPP_INFO(rclcpp::get_logger("optimization_log"), "\033[0;36m<optimization> receive Request (Key %d) %ld\033[0m", robot_id, msg.index_to);
         RCLCPP_INFO(rclcpp::get_logger("optimization_log"), "current robots in optimizer:");
         for (const auto& robot : optimizer->getConnectedRobot())
         {
